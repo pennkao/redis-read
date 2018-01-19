@@ -1,5 +1,5 @@
 # reading
-redis阅读理解，带详细注释，原注释版使用，现在使用understand
+redis阅读理解，带详细注释，原注释版使用source insight，现在使用understand
 
 
 
