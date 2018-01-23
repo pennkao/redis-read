@@ -91,7 +91,7 @@ static struct config {
     char *auth;
     int output; /* output mode, see OUTPUT_* defines */
     sds mb_delim;
-    char prompt[128];
+    char prompt[128];       //命令行提示 127.0.0.1:6379>
     char *eval;
 } config;
 
@@ -507,6 +507,7 @@ static sds cliFormatReplyCSV(redisReply *r) {
     return out;
 }
 
+//发送命令，并且读取返回
 static int cliReadReply(int output_raw_strings) {
     void *_reply;
     redisReply *reply;
@@ -530,6 +531,7 @@ static int cliReadReply(int output_raw_strings) {
 
     reply = (redisReply*)_reply;
 
+	//如果是集群模式,链接到其他的节点
     /* Check if we need to connect to a different node and reissue the
      * request. */
     if (config.cluster_mode && reply->type == REDIS_REPLY_ERROR &&
@@ -560,6 +562,7 @@ static int cliReadReply(int output_raw_strings) {
         cliRefreshPrompt();
     }
 
+	//输出到命令行
     if (output) {
         if (output_raw_strings) {
             out = cliFormatReplyRaw(reply);
@@ -641,6 +644,7 @@ static int cliSendCommand(int argc, char **argv, int repeat) {
             return REDIS_ERR;  /* Error = slaveMode lost connection to master */
         }
 
+		//发送并读取返回值
         if (cliReadReply(output_raw) != REDIS_OK) {
             free(argvlen);
             return REDIS_ERR;
@@ -900,7 +904,7 @@ static void repl() {
                     strcasecmp(argv[0],"exit") == 0)
                 {
                     exit(0);
-                } else if (argc == 3 && !strcasecmp(argv[0],"connect")) {
+                } else if (argc == 3 && !strcasecmp(argv[0],"connect")) {  //connect 127.0.0.1 6379
                     sdsfree(config.hostip);
                     config.hostip = sdsnew(argv[1]);
                     config.hostport = atoi(argv[2]);
@@ -1887,6 +1891,10 @@ redis-cli --bigkeys
 –eval执行指定lua脚本的。
 
 redis-cli --eval myscript.lua key1 key2 , arg1 arg2 arg3
+
+客户端发送命令调用链
+repl()->cliSendCommand()->cliReadReply()->redisGetReply()->[redisBufferWrite(),redisBufferRead()]
+
 */
 /*------------------------------------------------------------------------------
  * Program main()
@@ -1918,13 +1926,13 @@ int main(int argc, char **argv) {
     config.pipe_mode = 0;
     config.pipe_timeout = REDIS_CLI_DEFAULT_PIPE_TIMEOUT;
     config.bigkeys = 0;
-    config.stdinarg = 0;        //代表从标准输入读取数据作为该命令的最后一个参数。
+    config.stdinarg = 0;        				//代表从标准输入读取数据作为该命令的最后一个参数。
     config.auth = NULL;
     config.eval = NULL;
     if (!isatty(fileno(stdout)) && (getenv("FAKETTY") == NULL))
-        config.output = OUTPUT_RAW;       //标准输出 1
+        config.output = OUTPUT_RAW;       		//标准输出 1
     else
-        config.output = OUTPUT_STANDARD;  //0
+        config.output = OUTPUT_STANDARD;  		//0
     config.mb_delim = sdsnew("\n");
 	
 	//redis --help
@@ -1998,7 +2006,6 @@ int main(int argc, char **argv) {
 		//执行脚本
         return evalMode(argc,argv);
     } else {
-		//执行命令
         return noninteractive(argc,convertToSds(argc,argv));
     }
 }
