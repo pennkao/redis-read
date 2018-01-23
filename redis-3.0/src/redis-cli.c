@@ -324,6 +324,7 @@ static int cliSelect() {
     return REDIS_ERR;
 }
 
+//链接到redis server
 /* Connect to the server. If force is not zero the connection is performed
  * even if there is already a connected socket. */
 static int cliConnect(int force) {
@@ -331,6 +332,7 @@ static int cliConnect(int force) {
         if (context != NULL)
             redisFree(context);
 
+		//连接hostip   
         if (config.hostsocket == NULL) {
             context = redisConnect(config.hostip,config.hostport);
         } else {
@@ -579,6 +581,7 @@ static int cliReadReply(int output_raw_strings) {
     return REDIS_OK;
 }
 
+//发送命令到redis-server
 static int cliSendCommand(int argc, char **argv, int repeat) {
     char *command = argv[0];
     size_t *argvlen;
@@ -616,6 +619,7 @@ static int cliSendCommand(int argc, char **argv, int repeat) {
         argvlen[j] = sdslen(argv[j]);
 
     while(repeat--) {
+		//
         redisAppendCommandArgv(context,argc,(const char**)argv,argvlen);
         while (config.monitor_mode) {
             if (cliReadReply(output_raw) != REDIS_OK) exit(1);
@@ -693,7 +697,7 @@ static int parseOptions(int argc, char **argv) {
     int i;
 
     for (i = 1; i < argc; i++) {
-        int lastarg = i==argc-1;
+        int lastarg = i==argc-1; //最后一个参数
 
         if (!strcmp(argv[i],"-h") && !lastarg) {
             sdsfree(config.hostip);
@@ -707,11 +711,11 @@ static int parseOptions(int argc, char **argv) {
         } else if (!strcmp(argv[i],"-p") && !lastarg) {
             config.hostport = atoi(argv[++i]);
         } else if (!strcmp(argv[i],"-s") && !lastarg) {
-            config.hostsocket = argv[++i];
+            config.hostsocket = argv[++i];               //unixsocket文件
         } else if (!strcmp(argv[i],"-r") && !lastarg) {
-            config.repeat = strtoll(argv[++i],NULL,10);
+            config.repeat = strtoll(argv[++i],NULL,10);  //重复执行命令次数  redis-cli -r 3 ping
         } else if (!strcmp(argv[i],"-i") && !lastarg) {
-            double seconds = atof(argv[++i]);
+            double seconds = atof(argv[++i]);            //间隔时间执行命令  redis-cli -r 3 -i 1 ping
             config.interval = seconds*1000000;
         } else if (!strcmp(argv[i],"-n") && !lastarg) {
             config.dbnum = atoi(argv[++i]);
@@ -773,6 +777,7 @@ static int parseOptions(int argc, char **argv) {
     return i;
 }
 
+//从标准输入读取命令
 static sds readArgFromStdin(void) {
     char buf[1024];
     sds arg = sdsempty();
@@ -953,8 +958,8 @@ static int noninteractive(int argc, char **argv) {
     int retval = 0;
     if (config.stdinarg) {
         argv = zrealloc(argv, (argc+1)*sizeof(char*));
-        argv[argc] = readArgFromStdin();
-        retval = cliSendCommand(argc+1, argv, config.repeat);
+        argv[argc] = readArgFromStdin();  						//从标准输入读取命令
+        retval = cliSendCommand(argc+1, argv, config.repeat);	//发送命令
     } else {
         /* stdin is probably a tty, can be tested with S_ISCHR(s.st_mode) */
         retval = cliSendCommand(argc, argv, config.repeat);
@@ -974,7 +979,7 @@ static int evalMode(int argc, char **argv) {
     char **argv2;
     int j, got_comma = 0, keys = 0;
 
-    /* Load the script from the file, as an sds string. */
+    /* Load the script from the file, as an sds string. 加载lua脚本*/
     fp = fopen(config.eval,"r");
     if (!fp) {
         fprintf(stderr,
@@ -1889,7 +1894,7 @@ redis-cli --eval myscript.lua key1 key2 , arg1 arg2 arg3
 
 int main(int argc, char **argv) {
     int firstarg;
-
+	//首先初始化客户端配置操作
     config.hostip = sdsnew("127.0.0.1");
     config.hostport = 6379;
     config.hostsocket = NULL;
@@ -1913,21 +1918,27 @@ int main(int argc, char **argv) {
     config.pipe_mode = 0;
     config.pipe_timeout = REDIS_CLI_DEFAULT_PIPE_TIMEOUT;
     config.bigkeys = 0;
-    config.stdinarg = 0;
+    config.stdinarg = 0;        //代表从标准输入读取数据作为该命令的最后一个参数。
     config.auth = NULL;
     config.eval = NULL;
     if (!isatty(fileno(stdout)) && (getenv("FAKETTY") == NULL))
-        config.output = OUTPUT_RAW;
+        config.output = OUTPUT_RAW;       //标准输出 1
     else
-        config.output = OUTPUT_STANDARD;
+        config.output = OUTPUT_STANDARD;  //0
     config.mb_delim = sdsnew("\n");
+	
+	//redis --help
     cliInitHelp();
 
+	//根据用户输入的参数，配置config 
     firstarg = parseOptions(argc,argv);
     argc -= firstarg;
     argv += firstarg;
-
-    /* Latency mode */
+	
+	//配置设置完毕，根据配置中的模式设置，调用相应的mode方法  
+	
+	
+    /* Latency mode 延迟模式*/
     if (config.latency_mode) {
         if (cliConnect(0) == REDIS_ERR) exit(1);
         latencyMode();
@@ -1957,7 +1968,7 @@ int main(int argc, char **argv) {
         findBigKeys();
     }
 
-    /* Stat mode */
+    /* Stat mode 主要输出一些读取数据统计的一些信息*/
     if (config.stat_mode) {
         if (cliConnect(0) == REDIS_ERR) exit(1);
         if (config.interval == 0) config.interval = 1000000;
@@ -1973,7 +1984,7 @@ int main(int argc, char **argv) {
     /* Intrinsic latency mode */
     if (config.intrinsic_latency_mode) intrinsicLatencyMode();
 
-    /* Start interactive mode when no command is provided */
+    /* Start interactive mode when no command is provided 默认的模式，进入命令行交互模式执行命令*/
     if (argc == 0 && !config.eval) {
         /* Note that in repl mode we don't abort on connection error.
          * A new attempt will be performed for every command send. */
@@ -1984,8 +1995,10 @@ int main(int argc, char **argv) {
     /* Otherwise, we have some arguments to execute */
     if (cliConnect(0) != REDIS_OK) exit(1);
     if (config.eval) {
+		//执行脚本
         return evalMode(argc,argv);
     } else {
+		//执行命令
         return noninteractive(argc,convertToSds(argc,argv));
     }
 }
