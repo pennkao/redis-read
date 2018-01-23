@@ -635,7 +635,8 @@ int aeWait(int fd, int mask, long long milliseconds) {
 
 /*
  * 事件处理器的主循环
- */ //serverCron在initServer->aeCreateTimeEvent中创建，然后在aeMain(server.el); 中执行  其他的时间事件(定时时间，超时事件)和读写事件都在该函数中执行
+ */ //serverCron在initServer->aeCreateTimeEvent中创建，
+	//然后在aeMain(server.el); 中执行  其他的时间事件(定时时间，超时事件)和读写事件都在该函数中执行
 void aeMain(aeEventLoop *eventLoop) {
 
     eventLoop->stop = 0;

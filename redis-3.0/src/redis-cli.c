@@ -1892,6 +1892,7 @@ redis-cli --bigkeys
 
 redis-cli --eval myscript.lua key1 key2 , arg1 arg2 arg3
 
+redisFormatCommandArgv 格式化数据
 客户端发送命令调用链
 repl()->cliSendCommand()->cliReadReply()->redisGetReply()->[redisBufferWrite(),redisBufferRead()]
 

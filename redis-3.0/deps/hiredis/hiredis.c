@@ -931,6 +931,7 @@ int redisFormatCommand(char **target, const char *format, ...) {
     return len;
 }
 
+//格式化数据 *[命令个数]\r\n$[字符长度]\r\n命令\r\n$[长度]\r\n     *3\r\n$3\r\nset\r\n$4\r\nname\r\n$6\r\nmyname\r\n
 /* Format a command according to the Redis protocol. This function takes the
  * number of arguments, an array with arguments and an array with their
  * lengths. If the latter is set to NULL, strlen will be used to compute the
@@ -954,7 +955,7 @@ int redisFormatCommandArgv(char **target, int argc, const char **argv, const siz
     if (cmd == NULL)
         return -1;
 
-    pos = sprintf(cmd,"*%d\r\n",argc);
+    pos = sprintf(cmd,"*%d\r\n",argc);                 //*3
     for (j = 0; j < argc; j++) {
         len = argvlen ? argvlen[j] : strlen(argv[j]);
         pos += sprintf(cmd+pos,"$%zu\r\n",len);
@@ -1225,7 +1226,8 @@ int redisAppendCommand(redisContext *c, const char *format, ...) {
 int redisAppendCommandArgv(redisContext *c, int argc, const char **argv, const size_t *argvlen) {
     char *cmd;
     int len;
-
+	
+	//格式化命令
     len = redisFormatCommandArgv(&cmd,argc,argv,argvlen);
     if (len == -1) {
         __redisSetError(c,REDIS_ERR_OOM,"Out of memory");
